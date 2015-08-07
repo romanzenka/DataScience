@@ -23,7 +23,6 @@ The setup script should bring down the original VCF file (MultiSample.vcf) and a
 vcf_all - all of the sample pairs from the vcf formatted for the SVM
 vcf_train_scaled.model - the svm model
 vcf_train - every 5th record from all above (used for training)
-vcf_train_scaled - every 5th record from above scaled.
 
 IMPORTANT: when scaling data it is essential to scale the entire dataset together before splitting into training and testing sets.  While not completely correct (all contains train, and they should be separate) for the experiment here it DOES NOT MATTER because predictions will be higher not lower.  If the SVM could get even close, I would go back and do it properly. (see below)
 
