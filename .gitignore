@@ -1,2 +1,5 @@
 .idea/
 *.iml
+*.pdf
+*.vcf
+*tar.gz
