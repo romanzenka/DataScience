@@ -10,7 +10,7 @@ Python examples should be executed from the command line.  To do this you need t
  export SPARK_HOME=~/tools/spark-1.3.1-bin-hadoop2.6/
  export PYTHONPATH=$SPARK_HOME/python/:$PYTHONPATH
  export PYTHONPATH=$SPARK_HOME/python/lib/py4j-0.8.2.1-src.zip:$PYTHONPATH
- export SPARK_TUT=/Users/m102417/workspace/sparktut/
+ export SPARK_TUT=/Users/m102417/workspace/DataScience/vignettes/sparktut
 
 Then I run the examples from the source directory by executing the file e.g. ./HelloSpark.py
 $ python src/main/python/HelloSpark.py

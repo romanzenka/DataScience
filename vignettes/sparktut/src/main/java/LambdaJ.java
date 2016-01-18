@@ -1,7 +1,12 @@
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.Function;
 import org.apache.spark.rdd.RDD;
+
+import java.util.Iterator;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * SPARK contains two classes of operations:
@@ -35,20 +40,30 @@ import org.apache.spark.rdd.RDD;
 public class LambdaJ {
 
 
-
     public static void main(String[] args){
 
         //make a connection on localhost to spark
         SparkConf conf = new SparkConf().setMaster("local").setAppName("My App");
         JavaSparkContext sc = new JavaSparkContext(conf);
-
-        //load a vcf as text into a RDD
         JavaRDD<String> lines = sc.textFile("src/test/resources/example.vcf");
+        System.out.println("Performing an action on the new RDD, actions compute a result based on an RDD, and either return it to the driver program or save it to an external storage system (e.g., HDFS).");
 
-        //example of creating a filter using an anonymous inner class
-        //RDD<String> dataLines =
+        //Passing functions to Spark is also possible in Java, but in this case they are defined as classes, implementing an interface called Function. For example:
+        JavaRDD<String> headerLines = lines.filter(
+                new Function<String, Boolean>() {
+                    public Boolean call(String line) { return line.contains("##"); }
+                }
+        );
 
-        System.out.println("Finished");
+        int numHeaderLines = (int) headerLines.count();
+        System.out.println(numHeaderLines);
+        for(String line : headerLines.collect()){
+            //printing only the header lines
+            System.out.println(line);
+        }
+
+
+        System.out.println("Finished!");
     }
 
 
