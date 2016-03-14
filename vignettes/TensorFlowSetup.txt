@@ -1,1 +1,9 @@
+For Macintosh:
+First install Anaconda
+
+The Tensorflow setup install stuff is here:
+https://www.tensorflow.org/versions/r0.7/get_started/os_setup.html#pip-installation
+
+You may need to re-install Setup Tools to the most recent stable release...
+To Get Setup Tools:
 curl https://bootstrap.pypa.io/ez_setup.py -o - | python
