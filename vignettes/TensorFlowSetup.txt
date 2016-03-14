@@ -1,5 +1,13 @@
-For Macintosh:
-First install Anaconda
+Installing Tensorflow: (For Macintosh)
+
+
+#1 you will need the basic dependancies of TensorFlow i.e. numpy, I installed Anaconda to get these installed:
+https://www.continuum.io/downloads
+
+#2 You may need to install matplotlib, Anaconda should have it, but I had some trouble running some of the examples
+
+#3 Install tensorflow:
+I found the pip install to work best with anaconda
 
 The Tensorflow setup install stuff is here:
 https://www.tensorflow.org/versions/r0.7/get_started/os_setup.html#pip-installation
@@ -8,6 +16,7 @@ You may need to re-install Setup Tools to the most recent stable release...
 To Get Setup Tools:
 curl https://bootstrap.pypa.io/ez_setup.py -o - | python
 
+#4 to run some of the examples, you will need jupyter notebook.  I installed it using anaconda.
 To install jupyter:
 conda install jupyter
 
