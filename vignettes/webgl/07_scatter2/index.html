@@ -1,0 +1,312 @@
+<html>
+<head><title>Scatterplot with textures</title></head>
+<style>
+    body {
+        background: black;
+    }
+</style>
+<body>
+
+<canvas id="webGlCanvas" width="600" height="600" style="width: 600px; height: 600px;">
+    No canvas support for you.
+</canvas>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+  attribute float aX;
+  attribute float aY;
+  attribute vec2 aPos;
+
+  uniform mat4 uMatrix;
+  uniform float uSize;
+
+  varying vec2 vTexCoord;
+
+  void main(void) {
+    gl_Position = uMatrix * vec4(aX+uSize*aPos.x, aY+uSize*aPos.y, 0.0, 1.0);
+
+    vTexCoord = vec2((aPos.x+1.0)/2.0, (1.0-aPos.y)/2.0);
+  }
+
+</script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+  precision mediump float;
+
+  uniform sampler2D uSampler;
+
+  varying vec2 vTexCoord;
+
+  void main(void) {
+   // float r = length(vTexCoord);
+
+   // if (r>1.0) {
+   //     discard;
+   // }
+
+    gl_FragColor = texture2D(uSampler, vTexCoord);
+  }
+
+</script>
+
+<script>
+    function randn_bm() {
+        var u = 1 - Math.random(); // Subtraction to flip [0, 1) to (0, 1].
+        var v = 1 - Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    function makeRandomValues(offset, frequency, noise) {
+        var data = new Float32Array(1000000);
+        var max = 0;
+        var min = 0;
+        for (var i = 0; i < data.length; i++) {
+            var value = randn_bm() * noise + Math.sin(offset + frequency * i);
+            data[i] = value;
+            if (value < min) {
+                min = value;
+            }
+            if (value > max) {
+                max = value;
+            }
+        }
+
+        for (i = 0; i < data.length; i++) {
+            data[i] = 2 * (data[i] - min) / (max - min) - 1;
+        }
+
+        return data;
+    }
+
+    function makeData() {
+
+        return {
+            x: makeRandomValues(1, 0.08, 0.05),
+            y: makeRandomValues(2, 0.13, 0.06)
+        };
+    }
+
+    data = makeData();
+
+    function initWebGL(canvas) {
+        gl = null;
+
+        try {
+            // Try to grab the standard context. If it fails, fallback to experimental.
+            gl = canvas.getContext("webgl", { depth: false }) || canvas.getContext("experimental-webgl");
+        }
+        catch (e) {
+        }
+
+        // If we don't have a GL context, give up now
+        if (!gl) {
+            alert("Unable to initialize WebGL. Your browser may not support it.");
+            gl = null;
+        }
+
+        return gl;
+    }
+
+    function getShader(gl, id) {
+        var shaderScript, theSource, currentChild, shader;
+
+        shaderScript = document.getElementById(id);
+
+        if (!shaderScript) {
+            return null;
+        }
+
+        theSource = "";
+        currentChild = shaderScript.firstChild;
+
+        while (currentChild) {
+            if (currentChild.nodeType == currentChild.TEXT_NODE) {
+                theSource += currentChild.textContent;
+            }
+
+            currentChild = currentChild.nextSibling;
+        }
+
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        }
+        else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        }
+        else {
+            // Unknown shader type
+            return null;
+        }
+
+        gl.shaderSource(shader, theSource);
+
+        // Compile the shader program
+        gl.compileShader(shader);
+
+        // See if it compiled successfully
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert("An error occurred compiling the shaders: " + gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+    function initShaders() {
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+
+        // Create the shader program
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        // If creating the shader program failed, alert
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Unable to initialize the shader program: " + gl.getProgramInfoLog(shader));
+        }
+
+        gl.useProgram(shaderProgram);
+
+        posAttribute = gl.getAttribLocation(shaderProgram, "aPos");
+        gl.enableVertexAttribArray(posAttribute);
+
+        xAttribute = gl.getAttribLocation(shaderProgram, "aX");
+        gl.enableVertexAttribArray(xAttribute);
+
+        yAttribute = gl.getAttribLocation(shaderProgram, "aY");
+        gl.enableVertexAttribArray(yAttribute);
+
+        uMatrix = gl.getUniformLocation(shaderProgram, "uMatrix");
+        uSize = gl.getUniformLocation(shaderProgram, "uSize");
+    }
+
+    function initBuffers() {
+        squareVerticesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesBuffer);
+
+        // X, Y, texS, texT
+        var oneQuadVertices = [
+            1.0, 1.0,   // 1
+            -1.0, 1.0,   // 2
+            1.0, -1.0,   // 3
+
+            1.0, -1.0,   // 3
+            -1.0, 1.0,   // 2
+            -1.0, -1.0    // 4
+        ];
+
+        // Replicate these over and over again
+        var allVertices = new Float32Array(6 * 2 * data.x.length);
+        var xPosData = new Float32Array(6 * data.x.length);
+        var yPosData = new Float32Array(6 * data.y.length);
+        for (var i = 0; i < data.x.length; i++) {
+            var start = i * 6;
+            for (var j = 0; j < 6; j++) {
+                xPosData[start + j] = data.x[i];
+                yPosData[start + j] = data.y[i];
+            }
+            start = i * 12;
+            for (var j = 0; j < 12; j++) {
+                allVertices[start + j] = oneQuadVertices[j];
+            }
+        }
+
+        gl.bufferData(gl.ARRAY_BUFFER, allVertices, gl.STATIC_DRAW);
+
+        xPosBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, xPosBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, xPosData, gl.STATIC_DRAW);
+
+        yPosBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, yPosBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, yPosData, gl.STATIC_DRAW);
+    }
+
+    function handleTextureLoaded(image, texture) {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
+        // Set texture
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        var samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+        gl.uniform1i(samplerUniform, 0);
+
+        requestAnimationFrame(drawAll);
+    }
+
+    function initTextures() {
+        texture = gl.createTexture();
+        image = new Image();
+        image.onload = function () {
+            handleTextureLoaded(image, texture);
+        };
+        image.src = "zebra.png";
+    }
+
+    function bindAttributes() {
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesBuffer);
+        gl.vertexAttribPointer(posAttribute, 2, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, xPosBuffer);
+        gl.vertexAttribPointer(xAttribute, 1, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, yPosBuffer);
+        gl.vertexAttribPointer(yAttribute, 1, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+
+    var canvas = document.getElementById('webGlCanvas');
+    var gl = initWebGL(canvas);
+    // http://math.hws.edu/graphicsbook//demos/c6/webgl-limits.html
+
+    // Set clear color to black, fully opaque
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+    gl.disable(gl.DEPTH_TEST);
+
+    initShaders();
+    initBuffers();
+    initTextures();
+    bindAttributes();
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // Premult alpha blending
+
+    zoom = 1;
+    aspect = 600 / 600;
+
+    function drawAll() {
+        time = new Date().getTime() % 10000;
+
+        transformMatrix = [
+            zoom / aspect, 0, 0, 0,
+            0, zoom, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ];
+
+        // Clear the color as well as the depth buffer.
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.uniformMatrix4fv(uMatrix, false, new Float32Array(transformMatrix));
+        gl.uniform1f(uSize, (Math.sin(time / 5000.0 * 2 * Math.PI) + 1.1) / 300.0);
+        gl.drawArrays(gl.TRIANGLES, 0, data.x.length * 6);
+
+        requestAnimationFrame(drawAll);
+    }
+
+</script>
+
+</body>
+</html>
